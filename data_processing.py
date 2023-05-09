@@ -13,6 +13,9 @@ def read_sql(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def user_data_processing(users: pd.DataFrame) -> pd.DataFrame:
+    """
+    OHE categorical features. Label encoding 'city'.
+    """
     cat_col_users = ['country', 'os', 'source']
     users = one_hot_encoding(users, cat_col_users)
     le = preprocessing.LabelEncoder()
@@ -22,6 +25,9 @@ def user_data_processing(users: pd.DataFrame) -> pd.DataFrame:
 
 
 def post_data_processing(posts: pd.DataFrame) -> pd.DataFrame:
+    """
+    OHE categorical features. Text replaced by its length.
+    """
     cat_col_post = ['topic']
     posts['text'] = round(posts['text'].str.len(), 2)
     posts = one_hot_encoding(posts, cat_col_post)
@@ -29,18 +35,20 @@ def post_data_processing(posts: pd.DataFrame) -> pd.DataFrame:
 
 
 def read_feed_data():
-    feed_data = pd.read_sql("with a as ("
-                            "select timestamp, user_id, post_id, action, target, "
-                            "row_number() over (partition by user_id) as rn "
-                            "from feed_data "
-                            "order by user_id, rn) "
-                            "select timestamp, user_id, post_id, action, target, rn "
-                            "from a where rn <= 40 and action = 'view' limit 7000000",
-                            engine)
-    return feed_data
+    return pd.read_sql("with a as ("
+                       "select timestamp, user_id, post_id, action, target, "
+                       "row_number() over (partition by user_id) as rn "
+                       "from feed_data "
+                       "order by user_id, rn) "
+                       "select timestamp, user_id, post_id, action, target, rn "
+                       "from a where rn <= 40 and action = 'view' limit 7000000",
+                       engine)
 
 
 def feed_data_processing(feeds: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drop support features. Processing timestamp.
+    """
     feeds = feeds.drop(['action', 'rn'], axis=1)
     feeds = feeds.sort_values('timestamp')
     feeds['timestamp'] = pd.to_datetime(feeds['timestamp'])
@@ -55,7 +63,7 @@ def merging_and_dropping_duplicates(feed_data: pd.DataFrame,
                                     user_data: pd.DataFrame,
                                     post_data: pd.DataFrame) -> pd.DataFrame:
     """
-    Объединение таблиц и удаление просмотров на постах, где есть лайки.
+    Merging tables. Removal 'view' rows if it has 'like'.
     """
     df_merged = feed_data.merge(user_data, how='left', on='user_id') \
         .merge(post_data, how='left', on='post_id') \
@@ -71,6 +79,9 @@ def merging_and_dropping_duplicates(feed_data: pd.DataFrame,
 
 
 def data_scaling(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Processing features with big value.
+    """
     big_cols = ['age', 'mean_text']
     ct = ColumnTransformer([('StandardScaler', StandardScaler(), big_cols)])
     transformed_data = pd.DataFrame(ct.fit_transform(data)) \
