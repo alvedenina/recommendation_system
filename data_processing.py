@@ -114,7 +114,6 @@ if __name__ == '__main__':
     for col in topic_cols:
         df[f'{col}_mean'] = round(df['user_id'].map(df.groupby('user_id')[col].mean()), 4)
 
-    # data scaling
     df = data_scaling(df)
 
     df.to_csv('data/data_for_learning.csv')
