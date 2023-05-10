@@ -2,6 +2,7 @@ import pandas as pd
 from server.database import engine
 
 CHUNKSIZE = 200000
+LIMIT_LOAD = 10_000_000
 
 
 def batch_load_sql(query: str) -> pd.DataFrame:
@@ -14,7 +15,7 @@ def batch_load_sql(query: str) -> pd.DataFrame:
 
 
 def load_features(table):
-    df = batch_load_sql(f"SELECT * FROM {table} LIMIT 10000000")
+    df = batch_load_sql(f"SELECT * FROM {table} LIMIT {LIMIT_LOAD}")
     return df
 
 
