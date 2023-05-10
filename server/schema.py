@@ -4,12 +4,12 @@ from typing import List
 
 
 class UserGet(BaseModel):
-    age: int
-    city: str
-    country: str
-    exp_group: int
-    gender: int
     id: int
+    gender: int
+    age: int
+    country: str
+    city: str
+    exp_group: int
     os: str
     source: str
 
@@ -27,12 +27,12 @@ class PostGet(BaseModel):
 
 
 class FeedGet(BaseModel):
-    action: str
-    post_id: int
-    post: PostGet
     time: datetime.datetime
     user_id: int
     user: UserGet
+    post_id: int
+    post: PostGet
+    action: str
 
     class Config:
         orm_mode = True
