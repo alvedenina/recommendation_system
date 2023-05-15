@@ -5,6 +5,11 @@ CHUNKSIZE = 200000
 LIMIT_LOAD = 10_000_000
 
 
+def read_all_sql(df: str) -> pd.DataFrame:
+    return pd.read_sql(f"SELECT * FROM {df}",
+                       engine)
+
+
 def batch_load_sql(query: str) -> pd.DataFrame:
     conn = engine.connect().execution_options(stream_results=True)
     chunks = []
