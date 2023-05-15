@@ -1,15 +1,9 @@
 import pandas as pd
-import datetime
 from server.database import engine
 from sklearn import preprocessing
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
-from features import one_hot_encoding
-
-
-def read_sql(df: pd.DataFrame) -> pd.DataFrame:
-    return pd.read_sql(f"SELECT * FROM {df}",
-                       engine)
+from features import one_hot_encoding, read_all_sql
 
 
 def user_data_processing(users: pd.DataFrame) -> pd.DataFrame:
@@ -29,8 +23,8 @@ def post_data_processing(posts: pd.DataFrame) -> pd.DataFrame:
     OHE categorical features. Text replaced by its length.
     """
     cat_col_post = ['topic']
-    posts['text'] = round(posts['text'].str.len(), 2)
     posts = one_hot_encoding(posts, cat_col_post)
+    posts['text'] = round(posts['text'].str.len(), 2)
     return posts
 
 
@@ -78,27 +72,36 @@ def merging_and_dropping_duplicates(feed_data: pd.DataFrame,
     return df_merged
 
 
+def mean_likes_for_topic(df) -> pd.DataFrame:
+    """
+    Add mean count likes for each topic for each user
+    """
+    topic_cols = ['topic_covid', 'topic_entertainment', 'topic_movie', 'topic_politics', 'topic_sport', 'topic_tech']
+    for col in topic_cols:
+        df[f'{col}_mean'] = round(df['user_id'].map(df.groupby('user_id')[col].mean()), 4)
+    return df
+
+
 def data_scaling(data: pd.DataFrame) -> pd.DataFrame:
     """
     Processing features with big value.
     """
-    big_cols = ['age', 'mean_text']
+    big_cols = ['age', 'text', 'mean_text']
     ct = ColumnTransformer([('StandardScaler', StandardScaler(), big_cols)])
     transformed_data = pd.DataFrame(ct.fit_transform(data)) \
-        .rename(columns={0: 'age', 1: 'mean_text'}) \
+        .rename(columns={0: 'age', 1: 'text', 2: 'mean_text'}) \
         .set_index(data.index)
     data['age'] = transformed_data['age']
+    data['text'] = transformed_data['text']
     data['mean_text'] = transformed_data['mean_text']
     return data
 
 
 if __name__ == '__main__':
-    begin_time = datetime.datetime.now()
-
-    user_data = read_sql('user_data')
+    user_data = read_all_sql('user_data')
     user_data = user_data_processing(user_data)
 
-    post_text_df = read_sql('post_text_df')
+    post_text_df = pd.read_csv('data/post_text_df_distance.csv', index_col=0)
     post_text_df = post_data_processing(post_text_df)
 
     feed_data = read_feed_data()
@@ -106,18 +109,14 @@ if __name__ == '__main__':
 
     df = merging_and_dropping_duplicates(feed_data, user_data, post_text_df)
 
-    # mean text length for each user
+    # add mean text length for each user
     df['mean_text'] = df['user_id'].map(df.groupby('user_id')['text'].mean())
 
-    # mean count likes for each topic for each user
-    topic_cols = ['topic_covid', 'topic_entertainment', 'topic_movie', 'topic_politics', 'topic_sport', 'topic_tech']
-    for col in topic_cols:
-        df[f'{col}_mean'] = round(df['user_id'].map(df.groupby('user_id')[col].mean()), 4)
+    df = mean_likes_for_topic(df)
 
     df = data_scaling(df)
 
     df.to_csv('data/data_for_learning.csv')
     df = df.drop_duplicates(subset='user_id', keep='first')
-    df.to_sql('vedenina_ai_features_lesson_22', con=engine, if_exists='replace', chunksize=10000)
-
-    print(f"Время работы алгоритма: {datetime.datetime.now() - begin_time}")
+    # df.to_sql('vedenina_ai_features_lesson_22', con=engine, if_exists='replace', chunksize=10000)
+    df.to_csv('data/data_for_prediction.csv')
