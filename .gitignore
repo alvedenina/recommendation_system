@@ -6,3 +6,5 @@ catboost_info
 venv
 server/__pycache__
 model_dl_2
+model_control
+model_test
